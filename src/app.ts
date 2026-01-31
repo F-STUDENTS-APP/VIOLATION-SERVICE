@@ -13,7 +13,12 @@ const app = express();
 const port = process.env.PORT || 3004;
 
 // Middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+  })
+);
 app.use(
   cors({
     origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
@@ -38,7 +43,15 @@ import path from 'path';
 
 const swaggerDocument = YAML.load(path.join(__dirname, './config/swagger.yaml'));
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+const swaggerOptions = {
+  customCssUrl: 'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui.min.css',
+  customJs: [
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-bundle.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/5.11.0/swagger-ui-standalone-preset.min.js',
+  ],
+};
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, swaggerOptions));
 app.use('/api/v1/violations', violationRoutes);
 
 app.get('/health', (req: Request, res: Response) => {

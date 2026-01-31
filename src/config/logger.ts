@@ -9,21 +9,29 @@ const logFormat = winston.format.combine(
   winston.format.json()
 );
 
-const logger = winston.createLogger({
-  level: process.env.LOG_LEVEL || 'info',
-  format: logFormat,
-  transports: [
-    new winston.transports.Console({
-      format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
-    }),
+const transports: winston.transport[] = [
+  new winston.transports.Console({
+    format: winston.format.combine(winston.format.colorize(), winston.format.simple()),
+  }),
+];
+
+// Only add file logging if not on Vercel
+if (!process.env.VERCEL) {
+  transports.push(
     new winston.transports.DailyRotateFile({
-      filename: path.join(process.env.LOG_FILE_PATH || './logs', 'auth-service-%DATE%.log'),
+      filename: path.join(process.env.LOG_FILE_PATH || './logs', 'violation-service-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       zippedArchive: true,
       maxSize: '20m',
       maxFiles: '14d',
-    }),
-  ],
+    })
+  );
+}
+
+const logger = winston.createLogger({
+  level: process.env.LOG_LEVEL || 'info',
+  format: logFormat,
+  transports,
 });
 
 export default logger;
