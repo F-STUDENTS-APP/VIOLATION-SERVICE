@@ -1,0 +1,202 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+
+model Violation {
+  id                    String            @id @default(uuid())
+  
+  // Student Information
+  studentId             String
+  studentNisn           String
+  studentName           String
+  studentClass          String
+  
+  // Reporter Information
+  reportedBy            String            // User ID
+  reportedByName        String
+  reporterRole          String            // WALIKELAS, BK, GURUMAPEL
+  
+  // Category Information
+  categoryId            String
+  categoryCode          String
+  categoryName          String
+  categorySeverity      ViolationSeverity
+  
+  // Violation Details
+  description           String            @db.Text
+  location              String?
+  violationDate         DateTime
+  violationTime         String?           // HH:mm format
+  
+  // Points
+  points                Int
+  
+  // Evidence
+  evidenceUrls          Json?             // Array of URLs
+  witnessName           String?
+  witnessStatement      String?           @db.Text
+  
+  // Status & Workflow
+  status                ViolationStatus   @default(PENDING)
+  
+  // Wali Kelas Approval
+  approvedByWaliAt      DateTime?
+  approvedByWaliBy      String?           // User ID
+  approvedByWaliName    String?
+  waliKelasNotes        String?           @db.Text
+  
+  // BK Approval
+  approvedByBKAt        DateTime?
+  approvedByBKBy        String?           // User ID
+  approvedByBKName      String?
+  bkNotes               String?           @db.Text
+  
+  // Rejection
+  rejectedAt            DateTime?
+  rejectedBy            String?           // User ID
+  rejectedByName        String?
+  rejectionReason       String?           @db.Text
+  rejectionLevel        String?           // WALIKELAS, BK
+  
+  // Appeal
+  appealReason          String?           @db.Text
+  appealedAt            DateTime?
+  appealedBy            String?           // Usually studentId
+  appealReviewedAt      DateTime?
+  appealReviewedBy      String?           // User ID
+  appealStatus          AppealStatus?
+  appealNotes           String?           @db.Text
+  
+  // Punishment/Sanction
+  sanction              String?           @db.Text
+  sanctionStartDate     DateTime?
+  sanctionEndDate       DateTime?
+  sanctionCompleted     Boolean           @default(false)
+  
+  // Academic Period
+  academicYear          String
+  semester              Int               // 1 or 2
+  
+  // Meta
+  notificationSent      Boolean           @default(false)
+  notificationSentAt    DateTime?
+  isActive              Boolean           @default(true)
+  createdBy             String
+  createdAt             DateTime          @default(now())
+  updatedBy         String?
+  updatedAt         DateTime          @updatedAt
+  deletedAt         DateTime?
+  deletedBy         String?
+  
+  // Relations
+  approvalHistory       ViolationApprovalHistory[]
+  
+  @@index([studentId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([violationDate])
+  @@index([academicYear])
+  @@index([reportedBy])
+  @@map("violations")
+}
+
+model ViolationApprovalHistory {
+  id            String    @id @default(uuid())
+  violationId   String
+  
+  action        ApprovalAction
+  fromStatus    ViolationStatus
+  toStatus      ViolationStatus
+  
+  approverUserId    String
+  approverName      String
+  approverRole      String
+  
+  notes         String?   @db.Text
+  actionDate    DateTime  @default(now())
+  
+  violation     Violation @relation(fields: [violationId], references: [id], onDelete: Cascade)
+  
+  @@index([violationId])
+  @@index([actionDate])
+  @@map("violation_approval_history")
+}
+
+model ViolationStatistics {
+  id                String    @id @default(uuid())
+  studentId         String
+  studentName       String
+  classId           String
+  className         String
+  
+  // Counts
+  totalViolations   Int       @default(0)
+  pendingCount      Int       @default(0)
+  approvedCount     Int       @default(0)
+  rejectedCount     Int       @default(0)
+  appealedCount     Int       @default(0)
+  
+  // Points
+  totalPoints       Int       @default(0)
+  
+  // By Severity
+  ringanCount       Int       @default(0)
+  sedangCount       Int       @default(0)
+  beratCount        Int       @default(0)
+  
+  // Period
+  academicYear      String
+  semester              Int
+  
+  // Flags
+  isRepeatOffender  Boolean   @default(false)
+  lastViolationDate DateTime?
+  
+  updatedAt         DateTime  @updatedAt
+  
+  @@unique([studentId, academicYear, semester])
+  @@index([studentId])
+  @@index([academicYear])
+  @@map("violation_statistics")
+}
+
+enum ViolationStatus {
+  PENDING                 // Menunggu approval wali kelas
+  APPROVED_WALI          // Disetujui wali kelas, menunggu BK
+  APPROVED_BK            // Disetujui BK (final)
+  REJECTED               // Ditolak
+  APPEALED               // Dalam proses banding
+  APPEAL_APPROVED        // Banding disetujui (violation dibatalkan)
+  APPEAL_REJECTED        // Banding ditolak
+}
+
+enum ViolationSeverity {
+  RINGAN
+  SEDANG
+  BERAT
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ApprovalAction {
+  SUBMIT
+  APPROVE_WALI
+  APPROVE_BK
+  REJECT
+  APPEAL
+  APPEAL_APPROVE
+  APPEAL_REJECT
+  UPDATE
+  DELETE
+}
