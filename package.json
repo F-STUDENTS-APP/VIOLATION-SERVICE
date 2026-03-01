@@ -23,6 +23,7 @@
     "prepare": "husky"
   },
   "dependencies": {
+    "@microservices/common": "*",
     "@prisma/client": "^5.8.0",
     "axios": "^1.6.5",
     "cloudinary": "^1.41.2",
